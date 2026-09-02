@@ -1,8 +1,10 @@
 # Moodle Plugin Development
 
-A [Claude Code](https://claude.com/product/claude-code) skill that guides a **Moodle plugin** from a first idea to a released, tested version through a spec-driven workflow — instead of jumping straight from an idea to AI-generated code.
+An AI coding agent skill that guides a **Moodle plugin** from a first idea to a released, tested version through a spec-driven workflow — instead of jumping straight from an idea to AI-generated code.
 
 The idea: clear process, not the AI's technical skill, is what makes AI-assisted plugin development something you can actually trust. A written spec everyone agreed to, tests derived from that spec instead of invented afterward, and someone other than the builder taking an independent look before anything ships — that's what turns "vibe coding" into something you can rely on.
+
+It's a single markdown instruction file, so it works with whatever AI coding agent you use — natively as a [Claude Code](https://claude.com/product/claude-code) Skill, or pasted into any other agent's system prompt / rules file / custom instructions.
 
 ## The workflow
 
@@ -18,20 +20,29 @@ Full detail, including how each phase scales down for a solo developer, is in [`
 
 ## Install
 
+Clone this repo:
+
 ```bash
 git clone https://github.com/arnoutvree/moodle-plugin-development.git
+```
+
+**Claude Code:** symlink the skill folder into its user-level skills directory:
+
+```bash
 ln -s "$(pwd)/moodle-plugin-development/skill/moodle-plugin-development" ~/.claude/skills/moodle-plugin-development
 ```
 
+**Any other AI coding agent** (Cursor, Windsurf, Copilot, a custom agent, etc.): point it at [`skill/moodle-plugin-development/SKILL.md`](skill/moodle-plugin-development/SKILL.md) directly, or copy its contents into whatever instruction-file convention that agent uses (`AGENTS.md`, `.cursorrules`, a system prompt).
+
 ## Usage
 
-In Claude Code, from wherever you're planning the plugin:
+From wherever you're planning the plugin:
 
 ```
 let's build a new Moodle plugin for X
 ```
 
-or explicitly:
+In Claude Code you can also call it explicitly:
 
 ```
 /moodle-plugin-development
