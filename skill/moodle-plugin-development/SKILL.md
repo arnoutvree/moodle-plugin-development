@@ -102,9 +102,17 @@ If a task makes a test scenario in `user-stories.md` infeasible as written, that
 
 **Graded self-tests for qualitative sub-decisions.** Not every task reduces to pass/fail. Some carry a sub-decision that's a quality judgment rather than a binary check — is a ported heuristic (e.g. a security regex) strong enough, is a generated system prompt or piece of copy good enough. Don't force a binary self-test onto something that's actually a spectrum.
 
-For those tasks, score on a **1-8 scale** instead of pass/fail or a finer-grained scale: pick an `is_acceptable` threshold (e.g. ≥6) and a `max_iterations` cap, then run a generate → score → refine loop until the score clears the threshold or the cap is hit. A coarse 1-8 scale calibrates more reliably for an LLM evaluator than a fine-grained 1-100 one, while still giving enough room to actually drive revisions — unlike a bare pass/fail. Record the threshold, the iteration cap, and the fallback for a non-converging loop (escalate to a human reviewer, fall back to a simpler/safer default, or accept the best-scoring attempt with the gap noted) directly in `tasks.md` next to that task — this is a per-task judgment call, not a fixed number for every plugin.
+For those tasks, score on a **1-8 scale** instead of pass/fail or a finer-grained scale: pick an `is_acceptable` threshold (e.g. ≥6) and a `max_iterations` cap, then run a generate → score → refine loop until the score clears the threshold or the cap is hit. A coarse 1-8 scale calibrates more reliably for an LLM evaluator than a fine-grained 1-100 one, while still giving enough room to actually drive revisions — unlike a bare pass/fail.
 
-The same session can generate and score for a low-stakes call, but that weakens the evaluator's independence — for anything with real consequences, generate and score in separate sessions (or have a different reviewer score), and log each round in an append-only file in the plugin repo so a later reviewer can see how the accepted version was reached without re-running the whole loop.
+Track these checks in a table in `tasks.md`, one row per quality question, kept current as the loop iterates — not a round-by-round log inline in the task list:
+
+| Task | Quality question | Score | Threshold | What's needed for a higher score | Status |
+|---|---|---|---|---|---|
+| 6. Expiry notification copy | Does a site admin know at a glance what's expiring and what to do, with no extra context? | 7/8 | ≥6 | States the deadline and a settings link, but not the days remaining — naming "X days left" would make the urgency legible without the reader doing the date math | ✅ Accepted (round 2/3) |
+
+The "what's needed for a higher score" column is the evaluator's actual reasoning for the gap, not a placeholder — it's what drives the next refine step, and what a later reviewer reads to understand why the accepted version stopped there instead of chasing an 8. Once `max_iterations` is hit without clearing the threshold, that row's Status becomes the fallback outcome (escalate to a human reviewer, fall back to a simpler/safer default, or accept the best-scoring attempt with the gap noted) — a per-task judgment call, not a fixed rule for every plugin.
+
+The same session can generate and score for a low-stakes call, but that weakens the evaluator's independence — for anything with real consequences, generate and score in separate sessions (or have a different reviewer score), and log each round in an append-only file in the plugin repo so a later reviewer can see the full history behind the table's current row.
 
 This doesn't extend to Phase 4c's automated tests below, which stay pass/fail, or to Phase 5a's code review, which keeps its own three-axis structure unchanged.
 
