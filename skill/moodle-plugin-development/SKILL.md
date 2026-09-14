@@ -1,9 +1,9 @@
 ---
 name: moodle-plugin-development
 description: |
-  Guides a Moodle plugin from a first idea to a released, tested version through a spec-driven workflow: problem framing, a written spec with user stories and Given/When/Then test scenarios, an approval gate before any code is written, a technical implementation plan with its own sign-off, task-by-task implementation with self-testing (happy path and sad path), an independent review/test phase, and a second approval gate before release. Produces intent.md, specs.md, user-stories.md, plan.md and tasks.md along the way.
+  Guides a Moodle plugin from a first idea to a released, tested version through a spec-driven workflow: problem framing, a written spec with user stories and Given/When/Then test scenarios, an approval gate before any code is written, a technical implementation plan with its own sign-off, task-by-task implementation with self-testing (happy path and sad path), an independent review/test phase, and a second approval gate before release. Produces intent.md, specs.md, user-stories.md, plan.md and tasks.md along the way. Also has a lighter, diagnose-first track for bugs in existing functionality.
 
-  Use for requests like "let's build a new Moodle plugin for X", "help me spec out this Moodle feature", "moodle-plugin-development", or any time you're about to ask an AI to just start coding a Moodle plugin without a plan first.
+  Use for requests like "let's build a new Moodle plugin for X", "help me spec out this Moodle feature", "there's a bug in this Moodle plugin", "moodle-plugin-development", or any time you're about to ask an AI to just start coding a Moodle plugin without a plan first.
 
 created: 2026-09-02
 ---
@@ -55,6 +55,8 @@ Format: **Given / When / Then.**
 
 One scenario per possible outcome, not one scenario for "the" edge case. Each Then also states what must *not* happen. This is a mandatory part of the spec, not optional polish — it's what turns a user story into something testable.
 
+**`specs.md` sections:** Overview (opens with the problem statement from `intent.md`), Features, User Flows, Data Model, Capabilities/Hooks/Authorization, Out of Scope. The last one is as load-bearing as the others — state explicitly what this plugin deliberately does not do. Capabilities/Hooks/Authorization matters even for a plugin that looks purely UI-facing: Moodle's permission model, event/hook wiring and any capability checks belong in the spec, not discovered ad hoc during 4a.
+
 ### 2d (optional): visual design
 
 UI/UX work, user-flow, accessibility — for anything with a user-facing surface. Should be finished before the approval gate in Phase 3, so the approver reviews text and design together rather than approving text now and design later.
@@ -96,9 +98,11 @@ Starts only after Gate 1 — a change discovered mid-build that alters the agree
 
 Follow the build order in `tasks.md` step by step — each step ends with its own verification, not a loose experiment. Update the status column in `tasks.md` as each task completes. Starts only after `plan.md`/`tasks.md` are approved (4a) — a change discovered mid-build that alters the agreed spec goes back to Phase 2, not straight into the code.
 
+If a task makes a test scenario in `user-stories.md` infeasible as written, that isn't a call to make silently mid-build — treat it as a formal change to the spec: it goes back through Phase 2/Gate 1 for that piece of scope, and the scenario gets marked accordingly (e.g. superseded) rather than quietly edited to match whatever got built instead.
+
 ### 4c: self-test
 
-Each Given/When/Then scenario becomes an automated test (Behat, PHPUnit, or whatever the plugin already uses) — covering both the happy path and the sad path: invalid input, a missing capability, data that doesn't exist. The person or agent who built the feature tests it first, before anyone else looks at it.
+Each Given/When/Then scenario becomes an automated test: **Behat** (`tests/behat/`) for a scenario about a user workflow, UI interaction, or end-to-end behavior; **PHPUnit** (`tests/`) for a scenario about an isolated function, class, or internal calculation. Cover both the happy path and the sad path: invalid input, a missing capability, data that doesn't exist. The person or agent who built the feature tests it first, before anyone else looks at it.
 
 ---
 
@@ -106,11 +110,17 @@ Each Given/When/Then scenario becomes an automated test (Behat, PHPUnit, or what
 
 A second, independent look that doesn't share the builder's assumptions — a green self-test only proves the builder didn't catch their own blind spot, not that nobody has one. Four sub-steps.
 
-### 5a: code review
+### 5a: code review — three axes
 
-Check the diff against coding standards/security and against the spec itself — does the code do exactly what the user story and test scenario asked, no more and no less (including any privacy-by-design commitments from 2e)? And does the implemented test actually exercise the Given/When/Then, sad path included, not just the success path?
+Three separate questions, checked explicitly one at a time — not folded into one overall impression of "looks fine":
 
-This is the step where [`moodle-plugin-vibe-review`](https://github.com/arnoutvree/moodle-plugin-vibe-review) fits — call it here. If an AI agent performs this review, keep a human in the loop; never let it be fully autonomous. Findings become issues, not silent fixes.
+- **Standards** — does the code follow coding conventions, security practice, style? This is the step where [`moodle-plugin-vibe-review`](https://github.com/arnoutvree/moodle-plugin-vibe-review) fits — call it here.
+- **Spec** — does the code do exactly what the user story and test scenario asked, no more and no less (including any privacy-by-design commitments from 2e)?
+- **Test** — does the implemented test actually exercise the Given/When/Then, sad path included — or does a test merely exist at the right name and location without the assertions that scenario actually needs?
+
+A review that only checks Standards regularly misses that the implementation drifted from the spec, or quietly built more than the user story asked for. And a green test suite proves nothing if the test itself doesn't check what the scenario asked for — that's why Test is its own axis, not assumed from a passing run.
+
+If an AI agent performs this review, keep a human in the loop; never let it be fully autonomous. Findings become issues, not silent fixes.
 
 ### 5b: functional test by someone other than the builder
 
@@ -140,7 +150,25 @@ Update the plugin's README/CHANGELOG (and any external docs it's linked from) to
 
 ### 6c: aftercare
 
-A short monitoring window after release — how long depends on the plugin's size and blast radius, a few days for a small feature, a few weeks for something touching core workflows. Watch logs, error reports and support channels for regressions tied to the shipped user stories. A regression found during this window follows the normal bugfix path (back to Phase 4); fixing it doesn't reset the window.
+A short monitoring window after release — how long depends on the plugin's size and blast radius, a few days for a small feature, a few weeks for something touching core workflows. Watch logs, error reports and support channels for regressions tied to the shipped user stories. A regression found during this window follows the bugfix track below; fixing it doesn't reset the window.
+
+---
+
+## Bugfix track (separate from the phases above)
+
+The phases above are written for **new features**. A bug report against existing functionality follows a different track: there's already a working system with a concrete deviation, so "gather requirements" (2a) and "design" (2d) don't apply — you already have the requirements, you have a defect.
+
+**Diagnose loop (replaces Phase 1-2 for a bug report):**
+
+1. **Reproduce** — get the bug reliably reproducible: minimal steps, concrete input/output.
+2. **Minimize** — strip the repro case down to the smallest one that still shows the bug; this stops you from fixing the wrong cause.
+3. **Form a hypothesis** — state an explicit suspected cause before touching any code.
+4. **Instrument** — validate the hypothesis with logging/debugging/a targeted test, not by guessing.
+5. **Fix** — only change code after the hypothesis is confirmed, targeted at the confirmed cause.
+
+Then continue with Phase 5a (all three axes) and the rest of Phase 5: add a regression test that pins the bug down — Behat for a user-facing bug, PHPUnit for an isolated function/class (same split as 4c) — and verify the full suite still passes. Close with 6c (aftercare, always) and 6b (documentation, only if the fix changes behavior that's documented for support).
+
+**When to use this track instead of Phase 1-6:** a bug report or defect in existing functionality. Not for new features, not even small ones — those still follow Phase 1-6 (scaled down where it makes sense, see "Scope" above).
 
 ---
 
