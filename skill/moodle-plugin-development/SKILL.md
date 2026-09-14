@@ -100,6 +100,14 @@ Follow the build order in `tasks.md` step by step — each step ends with its ow
 
 If a task makes a test scenario in `user-stories.md` infeasible as written, that isn't a call to make silently mid-build — treat it as a formal change to the spec: it goes back through Phase 2/Gate 1 for that piece of scope, and the scenario gets marked accordingly (e.g. superseded) rather than quietly edited to match whatever got built instead.
 
+**Graded self-tests for qualitative sub-decisions.** Not every task reduces to pass/fail. Some carry a sub-decision that's a quality judgment rather than a binary check — is a ported heuristic (e.g. a security regex) strong enough, is a generated system prompt or piece of copy good enough. Don't force a binary self-test onto something that's actually a spectrum.
+
+For those tasks, score on a **1-8 scale** instead of pass/fail or a finer-grained scale: pick an `is_acceptable` threshold (e.g. ≥6) and a `max_iterations` cap, then run a generate → score → refine loop until the score clears the threshold or the cap is hit. A coarse 1-8 scale calibrates more reliably for an LLM evaluator than a fine-grained 1-100 one, while still giving enough room to actually drive revisions — unlike a bare pass/fail. Record the threshold, the iteration cap, and the fallback for a non-converging loop (escalate to a human reviewer, fall back to a simpler/safer default, or accept the best-scoring attempt with the gap noted) directly in `tasks.md` next to that task — this is a per-task judgment call, not a fixed number for every plugin.
+
+The same session can generate and score for a low-stakes call, but that weakens the evaluator's independence — for anything with real consequences, generate and score in separate sessions (or have a different reviewer score), and log each round in an append-only file in the plugin repo so a later reviewer can see how the accepted version was reached without re-running the whole loop.
+
+This doesn't extend to Phase 4c's automated tests below, which stay pass/fail, or to Phase 5a's code review, which keeps its own three-axis structure unchanged.
+
 ### 4c: self-test
 
 Each Given/When/Then scenario becomes an automated test: **Behat** (`tests/behat/`) for a scenario about a user workflow, UI interaction, or end-to-end behavior; **PHPUnit** (`tests/`) for a scenario about an isolated function, class, or internal calculation. Cover both the happy path and the sad path: invalid input, a missing capability, data that doesn't exist. The person or agent who built the feature tests it first, before anyone else looks at it.
