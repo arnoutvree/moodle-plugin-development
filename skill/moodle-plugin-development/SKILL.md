@@ -86,7 +86,7 @@ No code is written before this gate.
 Translates the approved spec into a concrete technical build plan, written before a single file is touched. Two documents, with different lifespans — same split as `specs.md`/`user-stories.md` in Phase 2:
 
 - **`plan.md`** — proposed file structure and architecture choices, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Locked once approved, like `specs.md`; rarely changes during the build.
-- **`tasks.md`** — the numbered build order: per task, the files involved, which user story/test scenario it covers, a concrete verification step, and a status column (open/in progress/done). This is where "every user story becomes an implementation task" actually happens — not left implicit until 4b. Stays a living document through 4b; update it as tasks get checked off. No regression value like `user-stories.md` — it can be discarded after release.
+- **`tasks.md`** — the numbered build order: per task, the files involved, which user story/test scenario it covers, a concrete verification step, and a score column (1-8, see 4c) that doubles as status — no score yet means the task hasn't started, and it only counts as done once the score clears its threshold, not on a separate, looser "looks finished" call. This is where "every user story becomes an implementation task" actually happens — not left implicit until 4b. Stays a living document through 4b; update it as tasks get checked off. No regression value like `user-stories.md` — it can be discarded after release.
 
 **Test:** a colleague who never saw the conversation should be able to implement the change from `plan.md` + `tasks.md` alone.
 
@@ -100,25 +100,26 @@ Follow the build order in `tasks.md` step by step — each step ends with its ow
 
 If a task makes a test scenario in `user-stories.md` infeasible as written, that isn't a call to make silently mid-build — treat it as a formal change to the spec: it goes back through Phase 2/Gate 1 for that piece of scope, and the scenario gets marked accordingly (e.g. superseded) rather than quietly edited to match whatever got built instead.
 
-**Graded self-tests for qualitative sub-decisions.** Not every task reduces to pass/fail. Some carry a sub-decision that's a quality judgment rather than a binary check — is a ported heuristic (e.g. a security regex) strong enough, is a generated system prompt or piece of copy good enough. Don't force a binary self-test onto something that's actually a spectrum.
-
-For those tasks, score on a **1-8 scale** instead of pass/fail or a finer-grained scale: pick an `is_acceptable` threshold (e.g. ≥6) and a `max_iterations` cap, then run a generate → score → refine loop until the score clears the threshold or the cap is hit. A coarse 1-8 scale calibrates more reliably for an LLM evaluator than a fine-grained 1-100 one, while still giving enough room to actually drive revisions — unlike a bare pass/fail.
-
-Track these checks in a table in `tasks.md`, one row per quality question, kept current as the loop iterates — not a round-by-round log inline in the task list:
-
-| Task | Quality question | Score | Threshold | What's needed for a higher score | Status |
-|---|---|---|---|---|---|
-| 6. Expiry notification copy | Does a site admin know at a glance what's expiring and what to do, with no extra context? | 7/8 | ≥6 | States the deadline and a settings link, but not the days remaining — naming "X days left" would make the urgency legible without the reader doing the date math | ✅ Accepted (round 2/3) |
-
-The "what's needed for a higher score" column is the evaluator's actual reasoning for the gap, not a placeholder — it's what drives the next refine step, and what a later reviewer reads to understand why the accepted version stopped there instead of chasing an 8. Once `max_iterations` is hit without clearing the threshold, that row's Status becomes the fallback outcome (escalate to a human reviewer, fall back to a simpler/safer default, or accept the best-scoring attempt with the gap noted) — a per-task judgment call, not a fixed rule for every plugin.
-
-The same session can generate and score for a low-stakes call, but that weakens the evaluator's independence — for anything with real consequences, generate and score in separate sessions (or have a different reviewer score), and log each round in an append-only file in the plugin repo so a later reviewer can see the full history behind the table's current row.
-
-This doesn't extend to Phase 4c's automated tests below, which stay pass/fail, or to Phase 5a's code review, which keeps its own three-axis structure unchanged.
-
 ### 4c: self-test
 
-Each Given/When/Then scenario becomes an automated test: **Behat** (`tests/behat/`) for a scenario about a user workflow, UI interaction, or end-to-end behavior; **PHPUnit** (`tests/`) for a scenario about an isolated function, class, or internal calculation. Cover both the happy path and the sad path: invalid input, a missing capability, data that doesn't exist. The person or agent who built the feature tests it first, before anyone else looks at it.
+Every task gets scored on the same **1-8 scale** — one unambiguous measure of "how done is this," whether the task is settled by an automated test or by judgment. Don't run two parallel systems, a green test suite here and a separate quality opinion there; one score, one column in `tasks.md`, one definition of done: the score clears its threshold.
+
+**Tasks with an objective check** (the large majority — a field order, a validation rule, a capability check): each Given/When/Then scenario becomes an automated test — **Behat** (`tests/behat/`) for a scenario about a user workflow, UI interaction, or end-to-end behavior; **PHPUnit** (`tests/`) for a scenario about an isolated function, class, or internal calculation. Cover both the happy path and the sad path: invalid input, a missing capability, data that doesn't exist. The score is a direct readout of that coverage — **8** once every scenario for the task passes, happy and sad path both; anything less names exactly what's still failing or untested. There's no accepting less than 8 here: `is_acceptable` for an objectively-checked task is always 8, because a spec-compliance rule is either met or it isn't.
+
+**Tasks with a judgment call** (a ported heuristic, e.g. a security regex — is it strong enough; a generated system prompt or piece of copy — is it good enough): no automated assertion can settle this, so run a generate → score → refine loop instead. Pick an `is_acceptable` threshold below 8 (e.g. ≥6 — "good enough" is a genuinely lower, real bar here) and a `max_iterations` cap, then iterate until the score clears the threshold or the cap is hit. A coarse 1-8 scale calibrates more reliably for an LLM evaluator than a fine-grained 1-100 one, while still giving enough room to actually drive revisions — unlike a bare pass/fail.
+
+Track every task's score in a table in `tasks.md`, kept current as work proceeds — not a round-by-round log inline in the task list:
+
+| Task | What's being scored | Score | Threshold | What's needed for a higher score | Status |
+|---|---|---|---|---|---|
+| 3. `content_generator.php` field generation | PHPUnit: field order, CRLF line endings, empty output before Contact/Expires exist | 8/8 | 8 | Fully covered — nothing missing | ✅ Done |
+| 6. Expiry notification copy | Does a site admin know at a glance what's expiring and what to do, with no extra context? | 7/8 | ≥6 | States the deadline and a settings link, but not the days remaining — naming "X days left" would make the urgency legible without the reader doing the date math | ✅ Accepted (round 2/3) |
+
+The "what's needed for a higher score" column is the actual reasoning for the gap, not a placeholder — for an objective task it's the specific missing assertion or uncovered case, for a judgment call it's the evaluator's reasoning, and either way it's what drives the next refine step. Once `max_iterations` is hit on a judgment-call task without clearing the threshold, that row's Status becomes the fallback outcome instead (escalate to a human reviewer, fall back to a simpler/safer default, or accept the best-scoring attempt with the gap noted) — a per-task judgment call, not a fixed rule for every plugin.
+
+The same session can generate and score a judgment-call task for a low-stakes decision, but that weakens the evaluator's independence — for anything with real consequences, generate and score in separate sessions (or have a different reviewer score), and log each round in an append-only file in the plugin repo so a later reviewer can see the full history behind the table's current row.
+
+The person or agent who built the feature scores it first, before anyone else looks at it. This doesn't extend to Phase 5a's code review below, which keeps its own three-axis structure unchanged — that's an independent second look, not a rescoring of 4c's table.
 
 ---
 
