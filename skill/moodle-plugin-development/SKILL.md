@@ -1,7 +1,7 @@
 ---
 name: moodle-plugin-development
 description: |
-  Guides a Moodle plugin from a first idea to a released, tested version through a spec-driven workflow: problem framing, a written spec with user stories and Given/When/Then test scenarios, an approval gate before any code is written, task-by-task implementation with self-testing (happy path and sad path), an independent review/test phase, and a second approval gate before release. Produces intent.md, specs.md and user-stories.md along the way.
+  Guides a Moodle plugin from a first idea to a released, tested version through a spec-driven workflow: problem framing, a written spec with user stories and Given/When/Then test scenarios, an approval gate before any code is written, a technical implementation plan with its own sign-off, task-by-task implementation with self-testing (happy path and sad path), an independent review/test phase, and a second approval gate before release. Produces intent.md, specs.md, user-stories.md, plan.md and tasks.md along the way.
 
   Use for requests like "let's build a new Moodle plugin for X", "help me spec out this Moodle feature", "moodle-plugin-development", or any time you're about to ask an AI to just start coding a Moodle plugin without a plan first.
 
@@ -79,11 +79,24 @@ No code is written before this gate.
 
 ## Phase 4: build
 
-### 4a: implementation
+### 4a: technical implementation plan → `plan.md` + `tasks.md`
 
-Each user story becomes an implementation task; each test scenario becomes a concrete test to write. Starts only after Gate 1 — a change discovered mid-build that alters the agreed spec goes back to Phase 2, not straight into the code.
+Translates the approved spec into a concrete technical build plan, written before a single file is touched. Two documents, with different lifespans — same split as `specs.md`/`user-stories.md` in Phase 2:
 
-### 4b: self-test
+- **`plan.md`** — proposed file structure and architecture choices, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Locked once approved, like `specs.md`; rarely changes during the build.
+- **`tasks.md`** — the numbered build order: per task, the files involved, which user story/test scenario it covers, a concrete verification step, and a status column (open/in progress/done). This is where "every user story becomes an implementation task" actually happens — not left implicit until 4b. Stays a living document through 4b; update it as tasks get checked off. No regression value like `user-stories.md` — it can be discarded after release.
+
+**Test:** a colleague who never saw the conversation should be able to implement the change from `plan.md` + `tasks.md` alone.
+
+**Approval:** a lighter, internal sign-off — a project lead or senior developer approves both documents before 4b starts. Not a formal stakeholder gate like Phase 3/5d/6 (the stakeholder doesn't review file names or architecture choices).
+
+Starts only after Gate 1 — a change discovered mid-build that alters the agreed spec goes back to Phase 2, not straight into `plan.md`.
+
+### 4b: implementation
+
+Follow the build order in `tasks.md` step by step — each step ends with its own verification, not a loose experiment. Update the status column in `tasks.md` as each task completes. Starts only after `plan.md`/`tasks.md` are approved (4a) — a change discovered mid-build that alters the agreed spec goes back to Phase 2, not straight into the code.
+
+### 4c: self-test
 
 Each Given/When/Then scenario becomes an automated test (Behat, PHPUnit, or whatever the plugin already uses) — covering both the happy path and the sad path: invalid input, a missing capability, data that doesn't exist. The person or agent who built the feature tests it first, before anyone else looks at it.
 
@@ -135,4 +148,4 @@ A short monitoring window after release — how long depends on the plugin's siz
 
 - A process skill, not a testing framework — it tells you *what* to test and *when*, not how to write Behat/PHPUnit for your specific plugin.
 - Phases 5b/5c assume a separate tester and/or stakeholder. Working solo doesn't excuse skipping the independent look — see "Scope" above.
-- No built-in artifact storage between sessions — `intent.md`, `specs.md` and `user-stories.md` are meant to live in your plugin's own repo, not in this skill.
+- No built-in artifact storage between sessions — `intent.md`, `specs.md`, `user-stories.md`, `plan.md` and `tasks.md` are meant to live in your plugin's own repo, not in this skill.
