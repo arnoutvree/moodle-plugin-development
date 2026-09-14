@@ -50,6 +50,7 @@ In Claude Code you can also call it explicitly:
 
 ## Related
 
+- [`moodle-plugin-scaffold`](https://github.com/arnoutvree/moodle-plugin-scaffold) — sets up a new plugin project (CLAUDE.md context layer + code skeleton) that this workflow's `intent.md`/`specs.md`/`user-stories.md` are designed to feed into.
 - [`moodle-plugin-vibe-review`](https://github.com/arnoutvree/moodle-plugin-vibe-review) — the code-review skill this workflow calls into during Phase 5a.
 
 ## License
