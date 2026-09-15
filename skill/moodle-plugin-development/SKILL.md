@@ -27,7 +27,13 @@ This skill walks you through six phases. It's meant to be used conversationally,
 
 Before any design work: what's the core problem? Who will use this? What changes for them? What are the constraints — budget, timeline, target Moodle version, hosting environment?
 
-This is a conversation, not a fixed checklist — ask targeted questions based on what's already known. Write the answers to `intent.md`. This becomes the opening section of the spec in Phase 2.
+This is a conversation, not a fixed checklist — ask targeted questions based on what's already known. Write the answers to `intent.md`, under three headings:
+
+- **Problem** — the core problem and why it needs solving now.
+- **Target users & impact** — who uses this, and what changes for them once it works.
+- **Constraints** — budget, timeline, technology, or "none known".
+
+This becomes the opening section of the spec in Phase 2.
 
 ### Phase 1a (optional): proof of concept for an external API
 
@@ -37,7 +43,22 @@ Only when the core functionality depends on an external API whose rate limits, a
 
 ## Phase 2: design phase → `specs.md`
 
-Everything that fills the spec: requirements, user stories, test scenarios, and visual design. Four sub-steps, each with its own output.
+Everything that fills the spec: requirements, user stories, test scenarios, visual design, and privacy by design. Five sub-steps, each with its own output.
+
+`specs.md` settles into a fixed shape once Phase 3 is done, so anyone picking it up mid-build can navigate it the same way every time:
+
+1. **Overview** — problem + target users, carried over from `intent.md`.
+2. **Features (MVP)**
+3. **User Stories & Test Scenarios** — short pointer to `user-stories.md`, no content here (see 2c for why it's a separate file).
+4. **User Flows**
+5. **Data Model** — "no changes" is a valid answer.
+6. **Capabilities/Hooks/Authorization** — matters even for a plugin that looks purely UI-facing: Moodle's permission model, event/hook wiring and any capability checks belong here, not discovered ad hoc during 4a.
+7. **Visual design** — only if there's a user-facing surface (2d).
+8. **Privacy by design** — only if the plugin touches personal data (2e).
+9. **Out of Scope** — as load-bearing as the others: state explicitly what this plugin deliberately does not do.
+10. **Testing Strategy** — what needs PHPUnit vs. Behat coverage. The concrete Given/When/Then scenarios themselves live in `user-stories.md`, not here.
+
+A plugin-specific domain section (e.g. a fixed reference table the plugin implements) can sit right after Overview when relevant — the list above is a minimum, not a ceiling.
 
 ### 2a: gather wishes and requirements
 
@@ -49,13 +70,13 @@ Format: **As / I want / so that.**
 
 Every item from the raw requirements — including a throwaway detail like a data source or an error-handling need — must show up in at least one user story. This is a coverage check: whatever's missing here never gets tested in 2c.
 
-### 2c: test scenarios per user story → part of `specs.md`
+Unlike `specs.md` (done once the build starts), `user-stories.md` stays a reference document through the build: one section per user story, each holding its own Given/When/Then scenarios (2c) that `tasks.md` points back to. Status itself lives in `tasks.md`'s score column (4c), not here — keep the two in sync rather than tracking status twice.
+
+### 2c: test scenarios per user story → part of `user-stories.md`
 
 Format: **Given / When / Then.**
 
 One scenario per possible outcome, not one scenario for "the" edge case. Each Then also states what must *not* happen. This is a mandatory part of the spec, not optional polish — it's what turns a user story into something testable.
-
-**`specs.md` sections:** Overview (opens with the problem statement from `intent.md`), Features, User Flows, Data Model, Capabilities/Hooks/Authorization, Out of Scope. The last one is as load-bearing as the others — state explicitly what this plugin deliberately does not do. Capabilities/Hooks/Authorization matters even for a plugin that looks purely UI-facing: Moodle's permission model, event/hook wiring and any capability checks belong in the spec, not discovered ad hoc during 4a.
 
 ### 2d (optional): visual design
 
