@@ -52,7 +52,7 @@ Everything that fills the spec: requirements, user stories, test scenarios, visu
 3. **User Stories & Test Scenarios** — short pointer to `user-stories.md`, no content here (see 2c for why it's a separate file).
 4. **User Flows**
 5. **Data Model** — "no changes" is a valid answer.
-6. **Capabilities/Hooks/Authorization** — matters even for a plugin that looks purely UI-facing: Moodle's permission model, event/hook wiring and any capability checks belong here, not discovered ad hoc during 4a.
+6. **Capabilities/Hooks/Authorization** — matters even for a plugin that looks purely UI-facing: Moodle's permission model, event/hook wiring and any capability checks belong here, not discovered ad hoc during 4a. For each capability and each new data access, state *why* that scope is needed — the question isn't just "is a capability checked" but "is this the narrowest one that still satisfies the user story" (e.g. a service that only needs to flag overdue users shouldn't read fields it never uses). This reasoning is what Gate 1's approver is actually signing off on, not just the file structure.
 7. **Visual design** — only if there's a user-facing surface (2d).
 8. **Privacy by design** — only if the plugin touches personal data (2e).
 9. **Out of Scope** — as load-bearing as the others: state explicitly what this plugin deliberately does not do.
@@ -142,6 +142,17 @@ The same session can generate and score a judgment-call task for a low-stakes de
 
 The person or agent who built the feature scores it first, before anyone else looks at it. This doesn't extend to Phase 5a's code review below, which keeps its own three-axis structure unchanged — that's an independent second look, not a rescoring of 4c's table.
 
+**Scope-changing tasks get an extra, lightweight check before scoring.** Most tasks in `tasks.md` implement scope that Phase 2/3 already settled, so 5a's Standards review at the end is enough. But a task that changes what the plugin can *do* — not just how it does it — introduces new risk before Phase 5a ever sees the code, and by the time 5a runs, several later tasks may already be built on top of it. Flag a task for this the moment it:
+
+- adds or widens a capability check,
+- adds a database write beyond what the spec's Data Model section accounted for,
+- adds a call to an external service, or
+- adds a new composer/npm dependency, or bundles/updates a third-party library.
+
+Before scoring that task, look — same session, right after writing it — at just that task's diff: does the new capability match what the spec's Capabilities/Hooks/Authorization section specified — scope and stated justification both — not looser and not tighter? Does the new write validate its input and fail safe rather than fail open? Does the new external call handle a failure or malformed response without corrupting state? For a new composer/npm dependency: does it come back clean on `composer audit`/`npm audit` (no known CVEs), is it actively maintained, from a reputable source, and license-compatible? For a bundled third-party library in a Moodle plugin: is `thirdpartylibs.xml` updated to declare it, with the correct version and license — `moodle-plugin-ci` will flag undeclared third-party code, but only at CI time, well after this task was scored.
+
+This is deliberately narrower than 5a's three-axis review and isn't a substitute for it — a finding here follows 4c's own rule (it lowers that task's score and becomes the "what's needed for a higher score" reasoning, not a silent fix), and it stays in `tasks.md`'s score column rather than a separate report. It also doesn't need 5a's independence: the point is catching an obvious hole before three more tasks get built on top of it, not a second pair of eyes. Phase 5a still runs unchanged afterward — it's the independent confirmation that this pass didn't miss anything, not made redundant by it.
+
 ---
 
 ## Phase 5: independent test phase
@@ -189,6 +200,8 @@ Update the plugin's README/CHANGELOG (and any external docs it's linked from) to
 ### 6c: aftercare
 
 A short monitoring window after release — how long depends on the plugin's size and blast radius, a few days for a small feature, a few weeks for something touching core workflows. Watch logs, error reports and support channels for regressions tied to the shipped user stories. A regression found during this window follows the bugfix track below; fixing it doesn't reset the window.
+
+Dependency risk doesn't end when this window does — a library that's clean today can have a CVE disclosed months later, long after this plugin shipped. That's a different failure mode than the regressions this window watches for, and it doesn't fit a per-plugin delivery skill: it needs a recurring check across every shipped plugin, the same shape as the existing monthly Azure cycles, not a step repeated inside each plugin's own Phase 6.
 
 ---
 
