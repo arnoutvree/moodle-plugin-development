@@ -33,7 +33,7 @@ This is a conversation, not a fixed checklist — ask targeted questions based o
 - **Target users & impact** — who uses this, and what changes for them once it works.
 - **Constraints** — budget, timeline, technology, or "none known".
 
-This becomes the opening section of the spec in Phase 2.
+It stays the permanent source of truth for the why — Phase 2's spec only links back to it, it doesn't copy it in.
 
 ### Phase 1a (optional): proof of concept for an external API
 
@@ -47,7 +47,7 @@ Everything that fills the spec: requirements, user stories, test scenarios, visu
 
 `specs.md` settles into a fixed shape once Phase 3 is done, so anyone picking it up mid-build can navigate it the same way every time:
 
-1. **Overview** — problem + target users, carried over from `intent.md`.
+1. **Overview** — two lines pointing back to `intent.md` for the problem statement, target users and constraints. No copy.
 2. **Features (MVP)**
 3. **User Stories & Test Scenarios** — short pointer to `user-stories.md`, no content here (see 2c for why it's a separate file).
 4. **User Flows**
