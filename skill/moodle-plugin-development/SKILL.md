@@ -45,6 +45,8 @@ Only when the core functionality depends on an external API whose rate limits, a
 
 Everything that fills the spec: requirements, user stories, test scenarios, visual design, and privacy by design. Five sub-steps, each with its own output.
 
+**Iterative as a whole, not per sub-step:** share the draft with the stakeholder and the developer, work in their feedback, and repeat until both agree — before Phase 3's approval gate. Gate 1 is where an agreed spec gets signed off, not where the first round of feedback happens.
+
 `specs.md` settles into a fixed shape once Phase 3 is done, so anyone picking it up mid-build can navigate it the same way every time:
 
 1. **Overview** — two lines pointing back to `intent.md` for the problem statement, target users and constraints. No copy.
@@ -70,13 +72,23 @@ Format: **As / I want / so that.**
 
 Every item from the raw requirements — including a throwaway detail like a data source or an error-handling need — must show up in at least one user story. This is a coverage check: whatever's missing here never gets tested in 2c.
 
-Unlike `specs.md` (done once the build starts), `user-stories.md` stays a reference document through the build: one section per user story, each holding its own Given/When/Then scenarios (2c) that `tasks.md` points back to. Status itself lives in `tasks.md`'s score column (4c), not here — keep the two in sync rather than tracking status twice.
+Unlike `specs.md` (done once the build starts), `user-stories.md` stays a reference document through the build: one section per user story, each holding its own Given/When/Then scenarios (2c) that `tasks.md` points back to. Status itself lives only in `tasks.md`'s score column (4c), not here — two places that have to stay in sync drift apart sooner or later.
 
 ### 2c: test scenarios per user story → part of `user-stories.md`
 
 Format: **Given / When / Then.**
 
 One scenario per possible outcome, not one scenario for "the" edge case. Each Then also states what must *not* happen. This is a mandatory part of the spec, not optional polish — it's what turns a user story into something testable.
+
+Categories to consider per user story (not every one applies every time):
+
+- happy path,
+- an alternative user action (rejecting or reassigning, not just confirming),
+- variation driven by a setting or configuration,
+- an error or retry path,
+- duplicate or overlapping input (e.g. the same record arriving through two sources).
+
+A scenario is only ready to build once its Given state can be set up repeatably — with fixtures, data generators or seed data. If it can't, it isn't testable yet, however clear it reads.
 
 ### 2d (optional): visual design
 
@@ -106,7 +118,7 @@ No code is written before this gate.
 
 Translates the approved spec into a concrete technical build plan, written before a single file is touched. Two documents, with different lifespans — same split as `specs.md`/`user-stories.md` in Phase 2:
 
-- **`plan.md`** — proposed file structure and architecture choices, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Locked once approved, like `specs.md`; rarely changes during the build.
+- **`plan.md`** — proposed file structure and architecture choices, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Minimum outline: 1. Overview · 2. Architecture (2.1 file structure, 2.2 data model, 2.3 integration points — hooks/callbacks/events, 2.4 security & authorization — concrete capability names, 2.5 external dependencies) · 3. Open decisions · 4. Spikes. The data model and integration points here are the technical side of the spec's functional sections (table and column names, hook names), not a copy of them. Locked once approved, like `specs.md`; rarely changes during the build.
 - **`tasks.md`** — the numbered build order: per task, the files involved, which user story/test scenario it covers, a concrete verification step, and a score column (1-8, see 4c) that doubles as status — no score yet means the task hasn't started, and it only counts as done once the score clears its threshold, not on a separate, looser "looks finished" call. This is where "every user story becomes an implementation task" actually happens — not left implicit until 4b. Stays a living document through 4b; update it as tasks get checked off. No regression value like `user-stories.md` — it can be discarded after release.
 
 **Test:** a colleague who never saw the conversation should be able to implement the change from `plan.md` + `tasks.md` alone.
@@ -117,7 +129,7 @@ Starts only after Gate 1 — a change discovered mid-build that alters the agree
 
 ### 4b: implementation
 
-Follow the build order in `tasks.md` step by step — each step ends with its own verification, not a loose experiment. Update the status column in `tasks.md` as each task completes. Starts only after `plan.md`/`tasks.md` are approved (4a) — a change discovered mid-build that alters the agreed spec goes back to Phase 2, not straight into the code.
+Follow the build order in `tasks.md` step by step — each step ends with its own verification, not a loose experiment. Update the task's score in `tasks.md` as it changes (4c). Starts only after `plan.md`/`tasks.md` are approved (4a) — a change discovered mid-build that alters the agreed spec goes back to Phase 2, not straight into the code.
 
 If a task makes a test scenario in `user-stories.md` infeasible as written, that isn't a call to make silently mid-build — treat it as a formal change to the spec: it goes back through Phase 2/Gate 1 for that piece of scope, and the scenario gets marked accordingly (e.g. superseded) rather than quietly edited to match whatever got built instead.
 
@@ -141,6 +153,8 @@ The "what's needed for a higher score" column is the actual reasoning for the ga
 The same session can generate and score a judgment-call task for a low-stakes decision, but that weakens the evaluator's independence — for anything with real consequences, generate and score in separate sessions (or have a different reviewer score), and log each round in an append-only file in the plugin repo so a later reviewer can see the full history behind the table's current row.
 
 The person or agent who built the feature scores it first, before anyone else looks at it. This doesn't extend to Phase 5a's code review below, which keeps its own three-axis structure unchanged — that's an independent second look, not a rescoring of 4c's table.
+
+**Check what the tests actually ran against, not just that they passed.** In a local dev environment the plugin often sits in the Moodle webroot as a *copy* rather than a symlink to your repo's working copy. An edit in the repo then never reaches the running site, and the next test run reports green on the old code — the most dangerous kind of false confidence, because nothing about the result looks off. At the start of a session, check whether the plugin path in the webroot is a symlink (`ls -la`), and for a container whether the folder is a bind mount rather than baked into the image. If it's a copy, sync explicitly before every test run and purge Moodle's caches afterward: Moodle caches language strings and the admin settings tree separately from the files, so a synced file isn't yet a changed screen. A change no test touches (a language string, a field width) is quickest to verify at the source — e.g. `get_string()` in a CLI script — rather than through the suite, which by definition says nothing about it.
 
 **Scope-changing tasks get an extra, lightweight check before scoring.** Most tasks in `tasks.md` implement scope that Phase 2/3 already settled, so 5a's Standards review at the end is enough. But a task that changes what the plugin can *do* — not just how it does it — introduces new risk before Phase 5a ever sees the code, and by the time 5a runs, several later tasks may already be built on top of it. Flag a task for this the moment it:
 
@@ -191,7 +205,9 @@ A finding from any sub-step isn't automatically a bug — it can also be a chang
 
 ### 6a: ship
 
-Release only after written/explicit sign-off from whoever approved in 5d, recorded somewhere durable.
+Go/no-go: the full test suite (PHPUnit, Behat, and `moodle-plugin-ci`'s checks) must pass on the exact commit you release — not just the tests for the tasks touched last. Release only after written/explicit sign-off from whoever approved in 5d, recorded somewhere durable.
+
+Ship a ZIP built for Moodle's installer, never the "Download ZIP" of your Git host. Moodle's plugin installer requires exactly one root folder, named after the plugin *without* its type prefix (`securitytxt/`, not `local_securitytxt/` or `moodle-local_securitytxt-main/`), with `version.php` directly inside it — a repo download fails on at least one of those. Let CI build the ZIP on every version tag (e.g. with `git archive --prefix=<name>/`, so only tracked files go in), and have it fail if the tag doesn't match `$plugin->release` in `version.php`.
 
 ### 6b: documentation
 
