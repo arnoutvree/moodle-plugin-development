@@ -279,7 +279,7 @@ Update the plugin's README/CHANGELOG (and any external docs it's linked from) to
 
 A short monitoring window after release — how long depends on the plugin's size and blast radius, a few days for a small feature, a few weeks for something touching core workflows. Watch logs, error reports and support channels for regressions tied to the shipped user stories. A regression found during this window follows the bugfix track below; fixing it doesn't reset the window. At the end of the window, check the *Success criteria* from `intent.md`: is the intended effect visible? If not, that's a new `intent.md`, not a bugfix.
 
-Dependency risk doesn't end when this window does — a library that's clean today can have a CVE disclosed months later, long after this plugin shipped. That's a different failure mode than the regressions this window watches for, and it doesn't fit a per-plugin delivery skill: it needs a recurring check across every shipped plugin, the same shape as the existing monthly Azure cycles, not a step repeated inside each plugin's own Phase 6.
+Dependency risk doesn't end when this window does — a library that's clean today can have a CVE disclosed months later, long after this plugin shipped. That's a different failure mode than the regressions this window watches for, and it doesn't fit a per-plugin delivery skill: it needs a recurring check across every shipped plugin (for example a monthly `composer audit` / `npm audit` run over all of them), not a step repeated inside each plugin's own Phase 6.
 
 ---
 
