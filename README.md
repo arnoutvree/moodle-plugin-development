@@ -8,9 +8,9 @@ It's a single markdown instruction file, so it works with whatever AI coding age
 
 ## The workflow
 
-1. **Problem & context** — what's the core problem, who uses it, what changes for them, what are the constraints? → `intent.md`
+1. **Problem & context** — a design interview (one question at a time, high-impact questions first, always with a recommended answer) on the core problem, who uses it, what changes for them, how you'll know it works, and the constraints → `intent.md`
    - *(optional)* a throwaway proof of concept if the feature depends on an untested external API
-2. **Design** — requirements, user stories (*As / I want / so that*), test scenarios per story (*Given / When / Then*, happy path and sad path), optional visual design, and privacy-by-design if personal data is involved → `specs.md`, `user-stories.md`
+2. **Design** — requirements gathered through the same interview, now in detail per role (site admin, teacher, student), user stories (*As / I want / so that*), test scenarios per story (*Given / When / Then*, happy path and sad path), optional visual design, and privacy-by-design if personal data is involved → `specs.md`, `user-stories.md`
 3. **Approval gate 1** — a clean spec, explicit sign-off, before a line of code is written
 4. **Build** — first a technical implementation plan (file structure, architecture choices, build order, a lighter internal sign-off) → `plan.md`, `tasks.md`; then implementation following that order, each test scenario becomes an automated test, self-tested by the builder first
 5. **Independent test phase** — code review (pairs well with [`moodle-plugin-vibe-review`](https://github.com/arnoutvree/moodle-plugin-vibe-review)), a functional test by someone other than the builder, an acceptance test by the stakeholder if there is one, then approval

@@ -1,7 +1,7 @@
 ---
 name: moodle-plugin-development
 description: |
-  Guides a Moodle plugin from a first idea to a released, tested version through a spec-driven workflow: problem framing, a written spec with user stories and Given/When/Then test scenarios, an approval gate before any code is written, a technical implementation plan with its own sign-off, task-by-task implementation with self-testing (happy path and sad path), an independent review/test phase, and a second approval gate before release. Produces intent.md, specs.md, user-stories.md, plan.md and tasks.md along the way. Also has a lighter, diagnose-first track for bugs in existing functionality.
+  Guides a Moodle plugin from a first idea to a released, tested version through a spec-driven workflow: a structured design interview (one question at a time, high-impact first) for problem framing and per-role requirements, a written spec with user stories and Given/When/Then test scenarios, an approval gate before any code is written, a technical implementation plan with its own sign-off, task-by-task implementation with self-testing (happy path and sad path), an independent review/test phase, and a second approval gate before release. Produces intent.md, specs.md, user-stories.md, plan.md and tasks.md along the way. Also has a lighter, diagnose-first track for bugs in existing functionality.
 
   Use for requests like "let's build a new Moodle plugin for X", "help me spec out this Moodle feature", "there's a bug in this Moodle plugin", "moodle-plugin-development", or any time you're about to ask an AI to just start coding a Moodle plugin without a plan first.
 
@@ -23,14 +23,43 @@ This skill walks you through six phases. It's meant to be used conversationally,
 
 ---
 
+## The design interview (used in Phase 1 and 2a)
+
+Phase 1 and 2a gather their input through a design interview: you question the stakeholder systematically until no open decisions remain. The method is the same in both phases; only the focus differs — the big picture in Phase 1, the details per role in 2a.
+
+**Rules:**
+1. **One question per turn.** Never bundle questions; wait for the answer.
+2. **Strategic and high-impact questions first.** Start with the questions whose answers shape the most other decisions or change the scope the most ("does this already exist?", "custom for one site or generic?", "which role is central?"). Detail questions come once the big picture is settled, so detailed answers don't get thrown away later.
+3. **Always give a recommended answer**, with one sentence of reasoning. The stakeholder reacts to a proposal instead of starting from a blank page.
+4. **Look it up before you ask.** Whatever the codebase, existing docs, Moodle core or the Plugin Directory can answer, check first and present for confirmation ("I see in X that Y — correct?").
+5. **Depth first, dependencies first.** Finish one topic before opening the next; a decision other decisions depend on comes first.
+6. **Push back on vague answers.** "It should just work" or "that'll be fine" needs a concrete criterion or example.
+7. **Say assumptions out loud.** An assumption nobody has stated becomes a question.
+8. **Proportional.** A small plugin gets a short interview. The goal isn't a complete questionnaire, it's no open decisions.
+
+**When to stop:** once every question the phase needs answered has an answer, or is deliberately named as an open point. Close with a summary the stakeholder confirms — decisions made, open points, risks surfaced — and only then write it down.
+
+**The result isn't a transcript.** `intent.md` and `specs.md` state the decisions as settled fact, not the Q&A that led to them (see Phase 3's document hygiene).
+
+---
+
 ## Phase 1: problem & context → `intent.md`
 
-Before any design work: what's the core problem? Who will use this? What changes for them? What are the constraints — budget, timeline, target Moodle version, hosting environment?
+Before any design work, run the design interview on the big picture. Screens, fields and error handling don't belong here yet — that's 2a. Topics, in this order (order = impact and dependency):
 
-This is a conversation, not a fixed checklist — ask targeted questions based on what's already known. Write the answers to `intent.md`, under three headings:
+- **Problem and trigger:** what's going wrong now, for whom, and why solve it now?
+- **Does it already exist?** Moodle core, the Plugin Directory, or a plugin you already have — why isn't that enough? Look this up yourself first and present it.
+- **Custom or generic:** built for one site/client, or meant for many sites or the Plugin Directory?
+- **Users and roles** at a high level, which role is central, and what changes for them.
+- **Success:** how will you know after go-live that it works?
+- **Constraints:** target Moodle version(s), hosting environment, budget, timeline.
+- **Rough boundaries:** what will this plugin definitely *not* do?
+
+Write the outcome to `intent.md`, under four headings:
 
 - **Problem** — the core problem and why it needs solving now.
 - **Target users & impact** — who uses this, and what changes for them once it works.
+- **Success criteria** — a measurable result or visible change that shows it works after go-live; checked in Phase 6c.
 - **Constraints** — budget, timeline, technology, or "none known".
 
 It stays the permanent source of truth for the why — Phase 2's spec only links back to it, it doesn't copy it in.
@@ -64,7 +93,40 @@ A plugin-specific domain section (e.g. a fixed reference table the plugin implem
 
 ### 2a: gather wishes and requirements
 
-Targeted questions depending on the goal and context — no fixed questionnaire. If this surfaces a technical assumption Phase 1a didn't cover (e.g. "oh, this also needs to call that external API"), go back to 1a before requirements keep building on it. Append raw requirements to `specs.md`, alongside `intent.md`.
+Run the design interview again, now in breadth and depth. Walk through the plugin from Moodle's three main roles. **Start with the role Phase 1 named as central**, and finish all topics for one role before moving to the next. If a role isn't affected, present that for confirmation ("Students don't see anything of this plugin — correct?") and move on; never skip a role silently. Because 2b's user stories start with "As a \<role\>", this also sorts the requirements by role before they get there.
+
+**Site administrator** — setup, operations and continuity
+- **Settings:** what does the admin configure, what are the defaults, and what should deliberately *not* be configurable?
+- **Permissions:** which capabilities, which archetypes get them, at which context level (system, category, course)?
+- **Background tasks and volume:** scheduled or ad hoc tasks, expected numbers of users, courses and records, performance.
+- **Integrations:** external services, what happens when they don't respond, where credentials live.
+- **Privacy:** which personal data, how long it's kept, export and deletion requests (input for 2e).
+- **Lifecycle:** install, upgrading existing data, disabling or uninstalling the plugin, course backup and restore.
+- **Operational insight:** logs, events and reports an admin needs when handling a support question.
+
+**Teacher** — use inside the course
+- **Setup:** what does the teacher switch on or configure per course or activity, and what inherits from site settings?
+- **Flow:** step by step what the teacher does and sees, including empty states (no data or participants yet).
+- **Insight and follow-up:** which overviews, reports or grades does the teacher need, and what do they do with them?
+- **Groups and variants:** behaviour with groups, multiple teachers, non-editing teachers.
+- **Notifications:** when does the teacher get a message, and can it be turned off?
+- **Edge cases:** misconfiguration, a student enrolling or unenrolling halfway, a course being copied or restored.
+
+**Student** — what the learner experiences
+- **Visibility:** what does the student see and not see, and from when?
+- **Flow:** step by step what the student does, including empty states and closed situations (deadline passed, activity hidden).
+- **Own data:** what's recorded about the student, and can they see it?
+- **Notifications:** which messages, through which channel (email, notification, Moodle app)?
+- **Accessibility and device:** does it work with a screen reader, on mobile and in the Moodle app — or is that explicitly out of scope?
+- **Edge cases:** duplicate or interrupted actions, missing permissions, guest or non-enrolled access.
+
+**Other roles** (manager, mentor/parent, guest): only if Phase 1 names them or the design touches them. Then ask about them as a separate question, using the topics of the role they most resemble.
+
+**Per role, also: what must *not* happen?** Record the unwanted side effect — it feeds the "must not" side of the Then-scenarios in 2c.
+
+If this surfaces a technical assumption Phase 1a didn't cover (e.g. "oh, this also needs to call that external API"), go back to 1a before requirements keep building on it. Append raw requirements to `specs.md`, alongside `intent.md`.
+
+**Stop test:** could someone who didn't follow the interview write user stories and Given/When/Then scenarios per role from these requirements without guessing?
 
 ### 2b: write user stories → `user-stories.md`
 
@@ -215,7 +277,7 @@ Update the plugin's README/CHANGELOG (and any external docs it's linked from) to
 
 ### 6c: aftercare
 
-A short monitoring window after release — how long depends on the plugin's size and blast radius, a few days for a small feature, a few weeks for something touching core workflows. Watch logs, error reports and support channels for regressions tied to the shipped user stories. A regression found during this window follows the bugfix track below; fixing it doesn't reset the window.
+A short monitoring window after release — how long depends on the plugin's size and blast radius, a few days for a small feature, a few weeks for something touching core workflows. Watch logs, error reports and support channels for regressions tied to the shipped user stories. A regression found during this window follows the bugfix track below; fixing it doesn't reset the window. At the end of the window, check the *Success criteria* from `intent.md`: is the intended effect visible? If not, that's a new `intent.md`, not a bugfix.
 
 Dependency risk doesn't end when this window does — a library that's clean today can have a CVE disclosed months later, long after this plugin shipped. That's a different failure mode than the regressions this window watches for, and it doesn't fit a per-plugin delivery skill: it needs a recurring check across every shipped plugin, the same shape as the existing monthly Azure cycles, not a step repeated inside each plugin's own Phase 6.
 
