@@ -269,6 +269,8 @@ A finding from any sub-step isn't automatically a bug — it can also be a chang
 
 Go/no-go: the full test suite (PHPUnit, Behat, and `moodle-plugin-ci`'s checks) must pass on the exact commit you release — not just the tests for the tasks touched last. Release only after written/explicit sign-off from whoever approved in 5d, recorded somewhere durable.
 
+Before the release commit and every push, check the language of the commit message against the publication policy of the platform it goes to (for example Dutch on an internal GitLab, English on a public GitHub): a pushed commit can't be rewritten without a force-push.
+
 Ship a ZIP built for Moodle's installer, never the "Download ZIP" of your Git host. Moodle's plugin installer requires exactly one root folder, named after the plugin *without* its type prefix (`securitytxt/`, not `local_securitytxt/` or `moodle-local_securitytxt-main/`), with `version.php` directly inside it — a repo download fails on at least one of those. Let CI build the ZIP on every version tag (e.g. with `git archive --prefix=<name>/`, so only tracked files go in), and have it fail if the tag doesn't match `$plugin->release` in `version.php`.
 
 ### 6b: documentation
