@@ -72,7 +72,7 @@ Only when the core functionality depends on an external API whose rate limits, a
 
 ## Phase 2: design phase → `specs.md`
 
-Everything that fills the spec: requirements, user stories, test scenarios, visual design, and privacy by design. Five sub-steps, each with its own output.
+Everything that fills the spec: requirements, user stories, test scenarios, visual design, privacy by design, and the risk profile. Six sub-steps, each with its own output.
 
 **Iterative as a whole, not per sub-step:** share the draft with the stakeholder and the developer, work in their feedback, and repeat until both agree — before Phase 3's approval gate. Gate 1 is where an agreed spec gets signed off, not where the first round of feedback happens.
 
@@ -87,7 +87,7 @@ Everything that fills the spec: requirements, user stories, test scenarios, visu
 7. **Visual design** — only if there's a user-facing surface (2d).
 8. **Privacy by design** — only if the plugin touches personal data (2e).
 9. **Out of Scope** — as load-bearing as the others: state explicitly what this plugin deliberately does not do.
-10. **Testing Strategy** — what needs PHPUnit vs. Behat coverage. The concrete Given/When/Then scenarios themselves live in `user-stories.md`, not here.
+10. **Risk profile and test level** — always (2f): the level (Basic, Elevated or High), the reasoning, the components present and what is deliberately not tested. Replaces the former "Testing Strategy" section; which tests exist follows from the components, and the concrete Given/When/Then scenarios live in `user-stories.md`, not here.
 
 A plugin-specific domain section (e.g. a fixed reference table the plugin implements) can sit right after Overview when relevant — the list above is a minimum, not a ceiling.
 
@@ -160,6 +160,18 @@ UI/UX work, user-flow, accessibility — for anything with a user-facing surface
 
 When the plugin collects, syncs or enriches personal data: settle the legal basis, opt-out handling and retention period *in the spec*, before code exists — not bolted on afterward. This gets checked again in Phase 5, this time against the actual built code.
 
+### 2f: risk profile and test level → part of `specs.md`
+
+Always, after 2e: by now you know the roles, integrations and privacy commitments the level depends on. Answer three questions, then pick a level — **Basic, Elevated or High**:
+
+1. Who touches data that isn't theirs (which role, how many people)?
+2. What is the damage if it fails — annoyance, data loss, a privacy incident?
+3. How many sites will it run on, and how often will it change?
+
+The level doesn't decide *which tests* exist — that follows from what the plugin contains (a privacy provider, an external service, an AI feature, upgrade steps). It decides how independent and how deep the checks in Phase 5 are. The standard checks apply at every level; a level only adds to them. When in doubt, take the higher level.
+
+Record it in `specs.md`: level, reasoning, the components present, any extra requirements for that level, and what is deliberately not tested — with the reason and who accepts it. A Basic plugin keeps this to a few lines. The level is approved together with the spec at Gate 1. Re-assess it when a build task adds a capability, a database write, an external call or a dependency (see 4c).
+
 ---
 
 ## Phase 3: document hygiene & approval — **Gate 1**
@@ -227,6 +239,8 @@ The person or agent who built the feature scores it first, before anyone else lo
 
 Before scoring that task, look — same session, right after writing it — at just that task's diff: does the new capability match what the spec's Capabilities/Hooks/Authorization section specified — scope and stated justification both — not looser and not tighter? Does the new write validate its input and fail safe rather than fail open? Does the new external call handle a failure or malformed response without corrupting state? For a new composer/npm dependency: does it come back clean on `composer audit`/`npm audit` (no known CVEs), is it actively maintained, from a reputable source, and license-compatible? For a bundled third-party library in a Moodle plugin: is `thirdpartylibs.xml` updated to declare it, with the correct version and license — `moodle-plugin-ci` will flag undeclared third-party code, but only at CI time, well after this task was scored.
 
+Ask one more question for such a task: does it change the level chosen in 2f (for example the plugin now processes personal data or calls an external service for the first time)? If so, update the section in `specs.md` and send the changed level back for approval.
+
 This is deliberately narrower than 5a's three-axis review and isn't a substitute for it — a finding here follows 4c's own rule (it lowers that task's score and becomes the "what's needed for a higher score" reasoning, not a silent fix), and it stays in `tasks.md`'s score column rather than a separate report. It also doesn't need 5a's independence: the point is catching an obvious hole before three more tasks get built on top of it, not a second pair of eyes. Phase 5a still runs unchanged afterward — it's the independent confirmation that this pass didn't miss anything, not made redundant by it.
 
 ---
@@ -240,7 +254,7 @@ A second, independent look that doesn't share the builder's assumptions — a gr
 Three separate questions, checked explicitly one at a time — not folded into one overall impression of "looks fine":
 
 - **Standards** — does the code follow coding conventions, security practice, style? This is the step where [`moodle-plugin-vibe-review`](https://github.com/arnoutvree/moodle-plugin-vibe-review) fits — call it here.
-- **Spec** — does the code do exactly what the user story and test scenario asked, no more and no less (including any privacy-by-design commitments from 2e)?
+- **Spec** — does the code do exactly what the user story and test scenario asked, no more and no less (including any privacy-by-design commitments from 2e and the extra requirements of the level chosen in 2f)?
 - **Test** — does the implemented test actually exercise the Given/When/Then, sad path included — or does a test merely exist at the right name and location without the assertions that scenario actually needs?
 
 A review that only checks Standards regularly misses that the implementation drifted from the spec, or quietly built more than the user story asked for. And a green test suite proves nothing if the test itself doesn't check what the scenario asked for — that's why Test is its own axis, not assumed from a passing run.
