@@ -55,6 +55,8 @@ Before any design work, run the design interview on the big picture. Screens, fi
 - **Constraints:** target Moodle version(s), hosting environment, budget, timeline.
 - **Rough boundaries:** what will this plugin definitely *not* do?
 
+**For a change to an existing plugin, start with a summary.** Have the AI read the project documents and the code the change touches, and tell you in a few paragraphs what it understood: what the plugin does, how that part works, and which documents and files matter. Correct misunderstandings on the spot by pointing it to the file that gives the right picture. An AI that misreads the system in the first minute designs and builds on that misreading. Then run the [drift check](#drift-check) so you know whether the documents still match the code before anyone leans on them.
+
 Write the outcome to `intent.md`, under four headings:
 
 - **Problem** — the core problem and why it needs solving now.
@@ -174,11 +176,77 @@ Record it in `specs.md`: level, reasoning, the components present, any extra req
 
 ---
 
+## Fresh-eyes check (before every approval)
+
+Before each approval, someone who didn't follow the conversation reviews the project documents: a fresh AI session or subagent, or a colleague. Whoever held the conversation can't see what's missing any more, because they fill the gaps with what they still remember. If you can't start a fresh session or subagent and have no colleague, stop: don't do the check in the same session.
+
+The check has four parts. The scope grows with the project:
+
+| Moment | Documents | Parts |
+|---|---|---|
+| Before Gate 1 | `intent.md`, `specs.md`, `user-stories.md`, visual design, privacy by design, risk profile | Comprehension, coherence, critic |
+| Before approving 4a | the above plus `plan.md` and `tasks.md` | Comprehension, coherence, critic, build-ready |
+| Before 5d and release | the above plus user documentation and README | Coherence |
+
+**1. Comprehension test (always first).** The fresh session gets only the documents and the files they reference, and explains in its own words what the change is meant to achieve and how the system currently works at the point the change touches. If the explanation is wrong or vague, the document lacks context: add it to the document (not to the chat) and repeat with a new fresh session. The other parts are pointless until this one passes.
+
+**2. Coherence.** Do the documents agree with each other?
+- *Traceability:* every success criterion leads to at least one user story, every story to scenarios, every scenario to a task in `tasks.md` and a test.
+- *Equality:* capabilities, data model and integration points in `specs.md` match the technical design in `plan.md` (same subject, different level of abstraction, no contradiction).
+- *Boundaries:* what `specs.md` puts out of scope doesn't come back in `plan.md`, `tasks.md` or the documentation as something to build.
+- *Terms:* the same word for the same thing in every document.
+- *Design, privacy, risk:* screens match the user flows; legal basis, opt-out and retention match the data model; the risk level follows from the answers, and the components ticked match what `specs.md` and `plan.md` describe.
+
+**3. Critic.** Another fresh session reads the documents as a critical reviewer and looks for:
+- assumptions nobody confirmed;
+- edge cases and failure situations with no described behaviour;
+- building too much: something for a future nobody asked for, or something Moodle core, the platform or an existing plugin already does (check that in the code, not by gut feeling).
+
+Not every point is justified; expect a good share to fall away. Whoever leads the process decides per point: adopt it or consciously don't. Repeat with a new fresh session until only details are left, with a maximum of three rounds. If substantial points keep coming after three rounds, the design isn't ready: go back to Phase 2 or 4a instead of running a fourth round.
+
+**4. Build-ready (only before approving 4a).** A fresh session reads the documents as an experienced developer and answers: is all the information here to build this correctly in one go? Every question it asks gets answered in `plan.md` or `tasks.md`, not in the chat, and then the test is repeated. This is how the "colleague who never saw the conversation" test in 4a is carried out.
+
+**Result:** a short list per part: what the comprehension test missed, the contradictions, the critic's points with the decision per point, and the open questions from the build-ready test. Everything is resolved or consciously rejected before approval is asked.
+
+---
+
+## Drift check
+
+The fresh-eyes check compares documents with each other. The drift check compares the documents with the code: does the plugin still do what `specs.md` and `plan.md` describe? After release `specs.md` hardly changes while the code moves on (a bugfix, a quick adjustment). Without a check the design quietly goes stale, and the next agent or colleague builds on a plan that no longer holds.
+
+**When:**
+- At the start of work on an existing plugin (a new feature in Phase 1, or a bug report), before anyone leans on `specs.md` or `plan.md`.
+- At the end of the bugfix track, before aftercare (6c): did the fix change something the design describes?
+
+**Who:** like the fresh-eyes check, someone who didn't follow the conversation. They read only the documents and the code, and check for each described part whether it exists in the code.
+
+**Four kinds of drift:**
+
+| Kind | What | Example (Moodle) |
+|---|---|---|
+| **Missing** | In the design, not built | A scheduled task from `specs.md` isn't in `db/tasks.php` |
+| **Incomplete data model** | Table or class lacks fields from the design | `db/install.xml` has three of the five designed fields |
+| **Shortcut** | Hardcoded value or workaround where logic was designed | A fixed period in the code where `specs.md` describes a setting |
+| **Different approach** | Built with another pattern, other permissions or dependency than planned | A capability in `db/access.php` with another archetype or a wider context than `specs.md` justifies |
+
+Look in the other direction too: code that does something nowhere in the design (an extra capability, database write or external call) is drift as well.
+
+If the check had to search the code for a part because the design names no file or class, add that reference to `plan.md`. The more precisely the design points at the code, the faster and more reliable the next drift check.
+
+**Result:** only the deviations, each with the document and the place in the code (`file:line`); with none, "No drift found". Per deviation, one of three ways:
+- **The code is wrong** → bugfix track.
+- **The design is outdated and the change was approved** (a change request or a finished bugfix) → update `specs.md` or `plan.md` so it describes what is there again.
+- **The change was never approved** → treat it as a change request: approve it after the fact or revert it. Never quietly edit the design to match the code.
+
+---
+
 ## Phase 3: document hygiene & approval — **Gate 1**
 
 This is a single approval moment, not two separate steps — don't clean up the spec first and only then send it off for approval later. Clean it up, then get sign-off on that same clean version, in one pass. That way the approver is always reviewing the finished document, never a rough draft, and you never end up shipping something that only *looked* approved because nobody re-read it after the cleanup.
 
-**Document hygiene:** the spec should read as a finished document, not a working log — no revision history, no numbered list of open questions, no internal process jargon. State only what will be built, as settled fact, plus explicitly what's out of scope. Discussion and weighed-up alternatives belong in the conversation (and, for a decision with lasting architectural weight, in a separate decision record) — not in the spec itself.
+**Document hygiene:** the spec should read as a finished document, not a working log — no revision history, no numbered list of open questions, no internal process jargon. State only what will be built, as settled fact, plus explicitly what's out of scope. Discussion and weighed-up alternatives don't belong in the spec. Technical alternatives that were rejected go briefly into `plan.md` (the "Considered and rejected" section, see 4a); a decision with lasting architectural weight beyond this plugin gets a separate decision record.
+
+**Fresh-eyes check before approval:** run the [fresh-eyes check](#fresh-eyes-check-before-every-approval) over `intent.md`, `specs.md`, `user-stories.md`, the visual design, the privacy decisions and the risk profile. Open contradictions are resolved first.
 
 **Approval:** whoever owns the decision signs off — a stakeholder, a client, or yourself if it's a personal project, but make it a deliberate, recorded moment rather than an implicit "I guess we're doing this now". Record it somewhere durable (an issue, a ticket, a commit message) so it's traceable later.
 
@@ -190,12 +258,18 @@ No code is written before this gate.
 
 ### 4a: technical implementation plan → `plan.md` + `tasks.md`
 
-Translates the approved spec into a concrete technical build plan, written before a single file is touched. Two documents, with different lifespans — same split as `specs.md`/`user-stories.md` in Phase 2:
+Translates the approved spec into a concrete technical build plan, written before a single file is touched.
 
-- **`plan.md`** — proposed file structure and architecture choices, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Minimum outline: 1. Overview · 2. Architecture (2.1 file structure, 2.2 data model, 2.3 integration points — hooks/callbacks/events, 2.4 security & authorization — concrete capability names, 2.5 external dependencies) · 3. Open decisions · 4. Spikes. The data model and integration points here are the technical side of the spec's functional sections (table and column names, hook names), not a copy of them. Locked once approved, like `specs.md`; rarely changes during the build.
+**Let the AI make the first proposal.** Have the AI write the first proposal for `plan.md` from the spec and the code, and react to it, instead of presenting your own approach. Its proposal shows at once whether it understands the problem and the system; if it only reacts to your idea, its misunderstandings and your blind spots stay invisible. Ask "why?" for every choice you don't expect, and when it assumes something wrong, point it to the file that gives the right picture.
+
+Two documents, with different lifespans — same split as `specs.md`/`user-stories.md` in Phase 2:
+
+- **`plan.md`** — proposed file structure and architecture choices, the alternatives that were considered and rejected, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Minimum outline: 1. Overview · 2. Architecture (2.1 file structure, 2.2 data model, 2.3 integration points — hooks/callbacks/events, 2.4 security & authorization — concrete capability names, 2.5 external dependencies) · 3. Considered and rejected · 4. Open decisions · 5. Spikes. The data model and integration points here are the technical side of the spec's functional sections (table and column names, hook names), not a copy of them. **Considered and rejected:** one or two lines per seriously considered alternative: what it was and why it dropped (e.g. "own table instead of user preferences: rejected, only one value per user needed"). It's a guardrail: without it, a later AI session or colleague proposes exactly that alternative again. Not a record of the discussion, only the outcome. Locked once approved, like `specs.md`; rarely changes during the build.
 - **`tasks.md`** — the numbered build order: per task, the files involved, which user story/test scenario it covers, a concrete verification step, and a score column (1-8, see 4c) that doubles as status — no score yet means the task hasn't started, and it only counts as done once the score clears its threshold, not on a separate, looser "looks finished" call. This is where "every user story becomes an implementation task" actually happens — not left implicit until 4b. Stays a living document through 4b; update it as tasks get checked off. No regression value like `user-stories.md` — it can be discarded after release.
 
 **Test:** a colleague who never saw the conversation should be able to implement the change from `plan.md` + `tasks.md` alone.
+
+**Fresh-eyes check before approval:** the [fresh-eyes check](#fresh-eyes-check-before-every-approval) runs over all documents up to and including `plan.md` and `tasks.md`, so the plan demonstrably follows from the approved spec.
 
 **Approval:** a lighter, internal sign-off — a project lead or senior developer approves both documents before 4b starts. Not a formal stakeholder gate like Phase 3/5d/6 (the stakeholder doesn't review file names or architecture choices).
 
@@ -271,7 +345,7 @@ Same scenarios from 2c, from their perspective, after 5b. This is the acceptance
 
 ### 5d: approval — **confirms Phase 5 is done**
 
-Confirmation that every finding from 5a/5b/5c has been resolved. Phase 5 isn't complete until this is recorded. Ready for Phase 6.
+Confirmation that every finding from 5a/5b/5c has been resolved. Phase 5 isn't complete until this is recorded. Run the [fresh-eyes check](#fresh-eyes-check-before-every-approval) (coherence part) before signing off. Ready for Phase 6.
 
 A finding from any sub-step isn't automatically a bug — it can also be a change request. A bug goes back to Phase 4. A change request re-enters Phase 2 for that piece of scope, then needs its own Gate 1 approval before it's built.
 
@@ -305,13 +379,14 @@ The phases above are written for **new features**. A bug report against existing
 
 **Diagnose loop (replaces Phase 1-2 for a bug report):**
 
+0. **Summarize** — first have the AI tell you what it understands from the documents and the code of the part where the bug sits, and correct that on the spot (see "For a change to an existing plugin" in Phase 1); then run the [drift check](#drift-check).
 1. **Reproduce** — get the bug reliably reproducible: minimal steps, concrete input/output.
 2. **Minimize** — strip the repro case down to the smallest one that still shows the bug; this stops you from fixing the wrong cause.
 3. **Form a hypothesis** — state an explicit suspected cause before touching any code.
 4. **Instrument** — validate the hypothesis with logging/debugging/a targeted test, not by guessing.
 5. **Fix** — only change code after the hypothesis is confirmed, targeted at the confirmed cause.
 
-Then continue with Phase 5a (all three axes) and the rest of Phase 5: add a regression test that pins the bug down — Behat for a user-facing bug, PHPUnit for an isolated function/class (same split as 4c) — and verify the full suite still passes. Close with 6c (aftercare, always) and 6b (documentation, only if the fix changes behavior that's documented for support).
+Then continue with Phase 5a (all three axes) and the rest of Phase 5: add a regression test that pins the bug down — Behat for a user-facing bug, PHPUnit for an isolated function/class (same split as 4c) — and verify the full suite still passes. Then run the [drift check](#drift-check). Close with 6c (aftercare, always) and 6b (documentation, only if the fix changes behavior that's documented for support).
 
 **When to use this track instead of Phase 1-6:** a bug report or defect in existing functionality. Not for new features, not even small ones — those still follow Phase 1-6 (scaled down where it makes sense, see "Scope" above).
 
