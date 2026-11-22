@@ -192,7 +192,7 @@ The check has four parts. The scope grows with the project:
 
 **2. Coherence.** Do the documents agree with each other?
 - *Traceability:* every success criterion leads to at least one user story, every story to scenarios, every scenario to a task in `tasks.md` and a test.
-- *Equality:* capabilities, data model and integration points in `specs.md` match the technical design in `plan.md` (same subject, different level of abstraction, no contradiction).
+- *Equality:* capabilities, data model and integration points in `specs.md` match the technical design in `plan.md` (same subject, different level of abstraction, no contradiction). Every integration point (2.3) and external dependency (2.5) appears as a node in the component diagram (2.6).
 - *Boundaries:* what `specs.md` puts out of scope doesn't come back in `plan.md`, `tasks.md` or the documentation as something to build.
 - *Terms:* the same word for the same thing in every document.
 - *Design, privacy, risk:* screens match the user flows; legal basis, opt-out and retention match the data model; the risk level follows from the answers, and the components ticked match what `specs.md` and `plan.md` describe.
@@ -200,7 +200,8 @@ The check has four parts. The scope grows with the project:
 **3. Critic.** Another fresh session reads the documents as a critical reviewer and looks for:
 - assumptions nobody confirmed;
 - edge cases and failure situations with no described behaviour;
-- building too much: something for a future nobody asked for, or something Moodle core, the platform or an existing plugin already does (check that in the code, not by gut feeling).
+- building too much: something for a future nobody asked for, or something Moodle core, the platform or an existing plugin already does (check that in the code, not by gut feeling);
+- before approving 4a, weak structure in the component diagram: a cycle, a node with many arrows in and out that does too much, an entry point that skips the logic layer, an external call outside the one place the rules name, or a dependency rule the diagram itself already breaks.
 
 Not every point is justified; expect a good share to fall away. Whoever leads the process decides per point: adopt it or consciously don't. Repeat with a new fresh session until only details are left, with a maximum of three rounds. If substantial points keep coming after three rounds, the design isn't ready: go back to Phase 2 or 4a instead of running a fourth round.
 
@@ -264,8 +265,35 @@ Translates the approved spec into a concrete technical build plan, written befor
 
 Two documents, with different lifespans — same split as `specs.md`/`user-stories.md` in Phase 2:
 
-- **`plan.md`** — proposed file structure and architecture choices, the alternatives that were considered and rejected, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Minimum outline: 1. Overview · 2. Architecture (2.1 file structure, 2.2 data model, 2.3 integration points — hooks/callbacks/events, 2.4 security & authorization — concrete capability names, 2.5 external dependencies) · 3. Considered and rejected · 4. Open decisions · 5. Spikes. The data model and integration points here are the technical side of the spec's functional sections (table and column names, hook names), not a copy of them. **Considered and rejected:** one or two lines per seriously considered alternative: what it was and why it dropped (e.g. "own table instead of user preferences: rejected, only one value per user needed"). It's a guardrail: without it, a later AI session or colleague proposes exactly that alternative again. Not a record of the discussion, only the outcome. Locked once approved, like `specs.md`; rarely changes during the build.
+- **`plan.md`** — proposed file structure and architecture choices, the alternatives that were considered and rejected, any open decisions that need confirming before the build starts, and a spike for each unconfirmed technical risk at implementation level (like Phase 1a, but after design — e.g. an external call that Phase 2 could only verify from documentation). Minimum outline: 1. Overview · 2. Architecture (2.1 file structure, 2.2 data model, 2.3 integration points — hooks/callbacks/events, 2.4 security & authorization — concrete capability names, 2.5 external dependencies · 2.6 component diagram) · 3. Considered and rejected · 4. Open decisions · 5. Spikes. The data model and integration points here are the technical side of the spec's functional sections (table and column names, hook names), not a copy of them. **Considered and rejected:** one or two lines per seriously considered alternative: what it was and why it dropped (e.g. "own table instead of user preferences: rejected, only one value per user needed"). It's a guardrail: without it, a later AI session or colleague proposes exactly that alternative again. Not a record of the discussion, only the outcome. Locked once approved, like `specs.md`; rarely changes during the build.
 - **`tasks.md`** — the numbered build order: per task, the files involved, which user story/test scenario it covers, a concrete verification step, and a score column (1-8, see 4c) that doubles as status — no score yet means the task hasn't started, and it only counts as done once the score clears its threshold, not on a separate, looser "looks finished" call. This is where "every user story becomes an implementation task" actually happens — not left implicit until 4b. Stays a living document through 4b; update it as tasks get checked off. No regression value like `user-stories.md` — it can be discarded after release.
+
+**Component diagram (2.6):** draw the structure before it is built. A tangled dependency shows on a drawing at once, in code only once it hurts. Add a Mermaid `flowchart` to `plan.md` with:
+- a node for every file or class the plan adds or changes, named by its real path or class (`classes/local/sync_service.php`), grouped in subgraphs by role: entry points (pages, external functions, scheduled tasks, hook and event callbacks), logic, data access, output (renderers, templates);
+- Moodle core APIs and external services as separate nodes at the edge, so every call leaving the plugin is visible;
+- an arrow for every call or dependency, pointing in the direction of the call.
+
+Below the diagram, state two to four dependency rules the code must keep, in plain words. For example: "entry points never use `$DB` directly, they go through a service class", "only `classes/local/api_client.php` calls the external service", "no cycles". Draw only what this plugin adds or changes; for a small change, the touched part and its direct neighbours are enough. The diagram is approved and locked together with the rest of `plan.md`.
+
+```mermaid
+flowchart LR
+  subgraph Entry
+    T[classes/task/sync_users.php]
+    P[index.php]
+  end
+  subgraph Logic
+    S[classes/local/sync_service.php]
+  end
+  subgraph Data
+    R[classes/local/user_repository.php]
+  end
+  T --> S
+  P --> S
+  S --> R
+  S --> A[classes/local/api_client.php]
+  A --> X[(External HR API)]
+  R --> DB[(Moodle $DB)]
+```
 
 **Test:** a colleague who never saw the conversation should be able to implement the change from `plan.md` + `tasks.md` alone.
 
